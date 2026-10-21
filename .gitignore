@@ -1,0 +1,7 @@
+backend/venv/
+backend/.env
+**/__pycache__/
+*.db
+*.mp3
+resp.json
+jina.txt

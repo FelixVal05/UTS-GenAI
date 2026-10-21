@@ -1,0 +1,14 @@
+fastapi
+uvicorn[standard]
+python-multipart
+sqlalchemy
+pydantic-settings
+pymupdf
+google-genai
+groq
+httpx
+edge-tts
+librosa
+soundfile
+pymysql
+cryptography

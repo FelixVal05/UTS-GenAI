@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulacra</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--ink:#16181d;--mute:#6b7280;--line:#e5e7eb;--acc:#2f5bea;--acc-ink:#fff;--ok:#15803d;--bad:#b91c1c;--warn:#b45309;--rec:#dc2626}
+@media (prefers-color-scheme:dark){:root{--bg:#0f1115;--card:#171a21;--ink:#e8eaf0;--mute:#9aa3b2;--line:#272c36;--acc:#6b8cff;--acc-ink:#0b0d12;--ok:#4ade80;--bad:#f87171;--warn:#fbbf24;--rec:#ef4444}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:760px;margin:0 auto;padding:28px 16px 40px}
+h1{font-size:1.6rem;margin:0 0 4px;letter-spacing:-.01em}
+h2{font-size:1.05rem;margin:0 0 12px}
+.sub{color:var(--mute);margin:0 0 24px}
+.mute{color:var(--mute);font-size:.9rem}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px;margin-bottom:16px}
+label{display:block;font-size:.85rem;color:var(--mute);margin:14px 0 6px}
+input,select,textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font:inherit}
+button{font:inherit;cursor:pointer}
+button:disabled{opacity:.5;cursor:not-allowed}
+.primary{margin-top:20px;width:100%;padding:12px;border:0;border-radius:10px;background:var(--acc);color:var(--acc-ink);font-weight:600}
+.ghost{padding:8px 14px;border:1px solid var(--line);border-radius:10px;background:transparent;color:var(--ink)}
+.status{min-height:1.4em;margin:10px 0 0;font-size:.9rem;color:var(--mute)}
+.status.err{color:var(--bad)}
+.row{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.chat{display:flex;flex-direction:column;gap:12px;margin-top:8px;max-height:52vh;overflow-y:auto;padding-right:4px}
+.msg{max-width:88%;padding:10px 14px;border-radius:14px;border:1px solid var(--line)}
+.msg .who{font-size:.75rem;color:var(--mute);margin-bottom:2px}
+.msg.ai{align-self:flex-start;background:var(--bg)}
+.msg.user{align-self:flex-end;background:var(--acc);color:var(--acc-ink);border-color:transparent}
+.msg.user .who{color:inherit;opacity:.8}
+.dock{position:sticky;bottom:0;background:var(--bg);padding:8px 0 4px}
+.controls{display:flex;align-items:center;gap:16px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.controls .mute{flex:1}
+.rec{width:64px;height:64px;border-radius:50%;border:0;background:var(--acc);color:var(--acc-ink);display:grid;place-items:center;flex:none}
+.rec.on{background:var(--rec);animation:pulse 1.2s infinite}
+.rec svg{width:28px;height:28px;fill:currentColor}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(220,38,38,.5)}100%{box-shadow:0 0 0 16px rgba(220,38,38,0)}}
+.scorecard{text-align:center}
+.big{font-size:3.4rem;font-weight:700;line-height:1.1}
+.bar{display:grid;grid-template-columns:130px 1fr 52px;gap:10px;align-items:center;margin:8px 0}
+.track{height:8px;border-radius:99px;background:var(--line);overflow:hidden}
+.fill{height:100%;background:var(--acc)}
+ul.list{margin:0;padding-left:20px}
+ul.list li{margin:4px 0}
+.ok-t{color:var(--ok)} .bad-t{color:var(--bad)}
+.chip{display:inline-block;padding:2px 10px;border-radius:99px;font-size:.78rem;border:1px solid var(--line);margin:0 6px 6px 0;color:var(--mute)}
+.chip.on{color:var(--ok);border-color:var(--ok)}
+.chip.match{color:var(--ok);border-color:var(--ok)}
+.chip.mismatch{color:var(--bad);border-color:var(--bad)}
+.chip.unverified{color:var(--warn);border-color:var(--warn)}
+.ans{border-top:1px solid var(--line);padding-top:14px;margin-top:14px}
+.ans:first-of-type{border-top:0;padding-top:0;margin-top:0}
+.better{margin-top:8px;padding:10px 12px;border-left:3px solid var(--acc);background:var(--bg);border-radius:0 8px 8px 0}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px}
+.stat{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.stat b{display:block;font-size:1.3rem}
+@media (max-width:520px){.bar{grid-template-columns:100px 1fr 46px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Simulacra</h1>
+  <p class="sub">Latihan wawancara kerja &amp; seleksi panitia dengan pewawancara AI berbasis suara.</p>
+
+  <!-- 1. SETUP -->
+  <section id="setup">
+    <form id="setupForm" class="card">
+      <h2>Mulai sesi</h2>
+      <label for="scenario">Skenario / posisi</label>
+      <input id="scenario" list="scenarios" required maxlength="150" value="Fullstack Intern">
+      <datalist id="scenarios">
+        <option value="Fullstack Intern"></option>
+        <option value="Software Engineer Intern"></option>
+        <option value="Seleksi Panitia - Divisi Acara"></option>
+        <option value="Seleksi Panitia - Divisi Humas"></option>
+        <option value="Wawancara Beasiswa"></option>
+      </datalist>
+
+      <label for="persona">Gaya pewawancara</label>
+      <select id="persona">
+        <option value="ramah">Ramah</option>
+        <option value="netral" selected>Netral</option>
+        <option value="tegas">Tegas (stress interview)</option>
+      </select>
+
+      <label for="language">Bahasa</label>
+      <select id="language">
+        <option value="id" selected>Indonesia</option>
+        <option value="en">English</option>
+      </select>
+
+      <label for="cv">CV (PDF, opsional)</label>
+      <input id="cv" type="file" accept="application/pdf">
+
+      <label for="github">Username GitHub (opsional, untuk kandidat IT)</label>
+      <input id="github" placeholder="contoh: octocat" autocomplete="off">
+      <label for="jobUrl">Link lowongan (opsional: Glints, Kalibrr, LinkedIn, halaman karir)</label>
+      <input id="jobUrl" type="url" placeholder="https://...">
+
+      <label for="jobText">Atau tempel teks deskripsi lowongan (fallback jika link diblokir)</label>
+      <textarea id="jobText" rows="5" placeholder="Tempel deskripsi lowongan di sini..."></textarea>
+
+      <button id="startBtn" class="primary" type="submit">Mulai wawancara</button>
+      <p id="setupStatus" class="status"></p>
+    </form>
+  </section>
+
+  <!-- 2. INTERVIEW -->
+  <section id="interview" hidden>
+    <div class="card">
+      <div class="row">
+        <div><h2 id="ivTitle">Wawancara</h2><div class="mute" id="ivMeta"></div></div>
+        <button id="stopVoiceBtn" class="ghost" type="button" hidden>Hentikan suara</button>
+      </div>
+      <div id="chat" class="chat"></div>
+    </div>
+    <div class="dock">
+      <p id="ivStatus" class="status"></p>
+      <div class="controls">
+        <button id="recBtn" class="rec" type="button" aria-label="Rekam jawaban">
+          <svg viewBox="0 0 24 24"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z"/></svg>
+        </button>
+        <div id="recLabel" class="mute">Klik untuk mulai bicara</div>
+        <button id="finishBtn" class="ghost" type="button">Selesai &amp; lihat rapor</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. REPORT -->
+  <section id="report" hidden>
+    <div id="reportBody"></div>
+    <button class="primary" type="button" onclick="location.reload()">Latihan lagi</button>
+  </section>
+</div>
+
+<script>
+const API = "http://localhost:8000";
+let sessionId = null, recorder = null, chunks = [], stream = null;
+let currentAudio = null, busy = false, finished = false, timerInt = null, t0 = 0;
+
+const $ = id => document.getElementById(id);
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text != null) e.textContent = text;
+  return e;
+}
+function show(name) {
+  for (const s of ["setup", "interview", "report"]) $(s).hidden = s !== name;
+  window.scrollTo(0, 0);
+}
+function setStatus(id, msg, isErr) {
+  const p = $(id); p.textContent = msg || ""; p.className = "status" + (isErr ? " err" : "");
+}
+async function api(path, opts) {
+  let res;
+  try { res = await fetch(API + path, opts); }
+  catch (e) { throw new Error("Tidak bisa terhubung ke backend (" + API + "). Pastikan uvicorn dan MySQL jalan."); }
+  if (!res.ok) {
+    let d = res.statusText;
+    try { const j = await res.json(); d = typeof j.detail === "string" ? j.detail : JSON.stringify(j.detail); } catch {}
+    throw new Error(d);
+  }
+  return res.json();
+}
+
+/* ---------- SETUP ---------- */
+$("setupForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const btn = $("startBtn"); btn.disabled = true;
+  try {
+    setStatus("setupStatus", "Membuat sesi & membaca lowongan...");
+    const fd = new FormData();
+    fd.append("scenario", $("scenario").value.trim());
+    fd.append("persona", $("persona").value);
+    fd.append("language", $("language").value);
+    fd.append("github", $("github").value.trim());
+    fd.append("job_url", $("jobUrl").value.trim());
+    fd.append("job_text", $("jobText").value.trim());
+    const f = $("cv").files[0]; if (f) fd.append("cv", f);
+    const s = await api("/sessions", { method: "POST", body: fd });
+    sessionId = s.id;
+
+    setStatus("setupStatus", "Planner Agent membaca CV & memeriksa GitHub... (bisa 10-30 detik)");
+    const r = await api(`/sessions/${sessionId}/start?audio=true`, { method: "POST" });
+
+    $("ivTitle").textContent = s.scenario;
+    $("ivMeta").textContent = "Gaya: " + s.persona + " · Bahasa: " + s.language;
+    show("interview");
+    addMsg("ai", r.ai_text);
+    updateRecBtn();
+    speak(r);
+  } catch (err) {
+    setStatus("setupStatus", err.message, true);
+    btn.disabled = false;
+  }
+});
+
+/* ---------- CHAT ---------- */
+function addMsg(role, text) {
+  const m = el("div", "msg " + role);
+  m.append(el("div", "who", role === "ai" ? "Pewawancara" : "Kamu"), el("div", null, text));
+  $("chat").append(m);
+  $("chat").scrollTop = $("chat").scrollHeight;
+}
+
+/* ---------- SUARA AI ---------- */
+function setSpeaking(on) { $("stopVoiceBtn").hidden = !on; }
+function stopAudio() {
+  if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+  if ("speechSynthesis" in window) speechSynthesis.cancel();
+  setSpeaking(false);
+}
+function fallbackSpeak(text) {
+  if (!("speechSynthesis" in window)) return;
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = $("language").value === "en" ? "en-US" : "id-ID";
+  u.onend = u.onerror = () => setSpeaking(false);
+  setSpeaking(true);
+  speechSynthesis.speak(u);
+}
+function speak(r) {
+  stopAudio();
+  if (!r.ai_audio_b64) return fallbackSpeak(r.ai_text);
+  const a = new Audio("data:audio/mpeg;base64," + r.ai_audio_b64);
+  currentAudio = a; setSpeaking(true);
+  a.onended = () => setSpeaking(false);
+  a.onerror = () => { setSpeaking(false); fallbackSpeak(r.ai_text); };
+  a.play().catch(() => { setSpeaking(false); fallbackSpeak(r.ai_text); });
+}
+$("stopVoiceBtn").addEventListener("click", stopAudio);
+
+/* ---------- REKAM ---------- */
+function updateRecBtn() { $("recBtn").disabled = busy || finished; }
+function fmt(s) { return Math.floor(s / 60) + ":" + String(Math.floor(s % 60)).padStart(2, "0"); }
+
+$("recBtn").addEventListener("click", async () => {
+  if (busy || finished) return;
+  if (recorder && recorder.state === "recording") { recorder.stop(); return; }
+  stopAudio();
+  try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
+  catch { setStatus("ivStatus", "Mikrofon tidak bisa diakses. Izinkan akses mic di browser (dan buka lewat localhost).", true); return; }
+
+  const mime = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"]
+    .find(m => window.MediaRecorder && MediaRecorder.isTypeSupported(m));
+  recorder = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
+  chunks = [];
+  recorder.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
+  recorder.onstop = onRecStop;
+  recorder.start();
+
+  setStatus("ivStatus", "");
+  $("recBtn").classList.add("on");
+  t0 = Date.now();
+  timerInt = setInterval(() => {
+    $("recLabel").textContent = "Merekam… " + fmt((Date.now() - t0) / 1000) + " — klik lagi untuk selesai";
+  }, 250);
+});
+
+async function onRecStop() {
+  stream.getTracks().forEach(t => t.stop());
+  clearInterval(timerInt);
+  $("recBtn").classList.remove("on");
+  $("recLabel").textContent = "Klik untuk mulai bicara";
+
+  const type = recorder.mimeType || "audio/webm";
+  const blob = new Blob(chunks, { type });
+  if (blob.size < 2000) { setStatus("ivStatus", "Rekaman terlalu pendek, coba lagi.", true); return; }
+  await sendTurn(blob, type.includes("mp4") ? "m4a" : "webm");
+}
+
+async function sendTurn(blob, ext) {
+  busy = true; updateRecBtn();
+  setStatus("ivStatus", "Mentranskrip & menunggu jawaban pewawancara...");
+  try {
+    const fd = new FormData();
+    fd.append("file", blob, "answer." + ext);
+    const r = await api(`/sessions/${sessionId}/turn?audio=true`, { method: "POST", body: fd });
+    addMsg("user", r.user_text);
+    addMsg("ai", r.ai_text);
+    setStatus("ivStatus", "");
+    if (r.finished) {
+      finished = true;
+      $("recLabel").textContent = "Sesi selesai. Klik “Selesai & lihat rapor”.";
+    }
+    busy = false; updateRecBtn();
+    speak(r);
+  } catch (err) {
+    setStatus("ivStatus", err.message, true);
+    busy = false; updateRecBtn();
+  }
+}
+
+/* ---------- FINISH & RAPOR ---------- */
+$("finishBtn").addEventListener("click", async () => {
+  stopAudio();
+  if (recorder && recorder.state === "recording") { recorder.onstop = null; recorder.stop(); stream.getTracks().forEach(t => t.stop()); clearInterval(timerInt); $("recBtn").classList.remove("on"); }
+  $("finishBtn").disabled = true;
+  setStatus("ivStatus", "Evaluator Agent menyusun rapor... (10-30 detik)");
+  try {
+    const rep = await api(`/sessions/${sessionId}/finish`, { method: "POST" });
+    let plan = null;
+    try { plan = (await api(`/sessions/${sessionId}`)).plan; } catch {}
+    renderReport(rep, plan);
+    show("report");
+  } catch (err) {
+    setStatus("ivStatus", err.message, true);
+    $("finishBtn").disabled = false;
+  }
+});
+
+function listCard(title, items, cls) {
+  const c = el("div", "card"); c.append(el("h2", cls, title));
+  const ul = el("ul", "list");
+  (items || []).forEach(t => ul.append(el("li", null, t)));
+  if (!(items || []).length) ul.append(el("li", null, "-"));
+  c.append(ul); return c;
+}
+
+function renderReport(rep, plan) {
+  const root = $("reportBody"); root.replaceChildren();
+
+  const top = el("div", "card scorecard");
+  top.append(el("div", "big", String(rep.overall_score ?? "-")), el("div", "mute", "skor keseluruhan (0-100)"));
+  root.append(top);
+
+  const sc = el("div", "card"); sc.append(el("h2", null, "Skor per aspek"));
+  const labels = { relevansi: "Relevansi", struktur_star: "Struktur STAR", kejelasan: "Kejelasan", kedalaman: "Kedalaman", ketepatan_teknis: "Ketepatan teknis" };
+  for (const [k, v] of Object.entries(rep.scores || {})) {
+    if (v == null) continue;
+    const row = el("div", "bar"); row.append(el("span", null, labels[k] || k));
+    const track = el("div", "track"), fill = el("div", "fill");
+    fill.style.width = Math.max(0, Math.min(10, Number(v) || 0)) * 10 + "%";
+    track.append(fill);
+    row.append(track, el("b", null, v + "/10")); sc.append(row);
+  }
+  root.append(sc);
+
+  root.append(listCard("Kekuatan", rep.strengths, "ok-t"), listCard("Yang perlu diperbaiki", rep.weaknesses, "bad-t"));
+
+  const pa = el("div", "card"); pa.append(el("h2", null, "Analisis per jawaban"));
+  (rep.per_answer || []).forEach(a => {
+    const box = el("div", "ans");
+    box.append(el("b", null, a.question || ""), el("div", "mute", a.answer_summary || ""));
+    const chips = el("div"); chips.style.margin = "8px 0 4px";
+    [["situation", "S"], ["task", "T"], ["action", "A"], ["result", "R"]].forEach(([k, l]) => {
+      chips.append(el("span", "chip" + ((a.star || {})[k] ? " on" : ""), l + " " + (labelStar(k))));
+    });
+    box.append(chips, el("div", null, a.feedback || ""));
+    if (a.better_answer) {
+      const b = el("div", "better"); b.append(el("div", "mute", "Contoh jawaban lebih baik"), el("div", null, a.better_answer));
+      box.append(b);
+    }
+    pa.append(box);
+  });
+  root.append(pa);
+
+  const d = rep.delivery && rep.delivery.overall;
+  const dc = el("div", "card"); dc.append(el("h2", null, "Penyampaian (dihitung dari audio)"));
+  if (d) {
+    const g = el("div", "grid");
+    [["Kata/menit", d.wpm ?? "-"], ["Jeda", d.pause_pct + "%"], ["Jeda panjang", d.long_pause_count],
+     ["Kata pengisi", d.fillers], ["Total kata", d.total_words]].forEach(([l, v]) => {
+      const s = el("div", "stat"); s.append(el("b", null, String(v)), el("span", "mute", l)); g.append(s);
+    });
+    dc.append(g);
+    const ul = el("ul", "list"); ul.style.marginTop = "12px";
+    ((rep.delivery.flags) || []).forEach(t => ul.append(el("li", null, t)));
+    dc.append(ul);
+    dc.append(el("p", "mute", "Catatan: transkripsi sering menghilangkan kata pengisi, jadi angkanya batas bawah."));
+  } else dc.append(el("p", "mute", "Data audio tidak tersedia."));
+  root.append(dc);
+
+    if (plan && plan.skill_gaps && plan.skill_gaps.length) {
+    const gc = el("div", "card"); gc.append(el("h2", null, "Skill gap terhadap lowongan"));
+    const j = plan.job || {};
+    if (j.title) gc.append(el("p", "mute", j.title + (j.company ? " — " + j.company : "")));
+    const gnames = { terbukti: "Terbukti", sebagian: "Sebagian", belum_terbukti: "Belum terbukti" };
+    const gcls = { terbukti: "match", sebagian: "unverified", belum_terbukti: "mismatch" };
+    plan.skill_gaps.forEach(g => {
+      const b = el("div", "ans");
+      b.append(el("span", "chip " + (gcls[g.status] || ""), gnames[g.status] || g.status),
+               el("span", "chip", g.level === "wajib" ? "Wajib" : "Nilai tambah"),
+               el("div", null, g.requirement), el("div", "mute", g.evidence || ""));
+      gc.append(b);
+    });
+    root.append(gc);
+  }
+  if (plan && plan.claims && plan.claims.length) {
+    const cc = el("div", "card"); cc.append(el("h2", null, "Verifikasi klaim CV"));
+    const gh = plan.github || {};
+    cc.append(el("p", "mute", gh.found ? ("GitHub diperiksa: " + (gh.repos || []).length + " repo publik terbaca.") : "Tidak ada GitHub yang diperiksa."));
+    const names = { match: "Cocok", mismatch: "Tidak cocok", unverified: "Belum terverifikasi" };
+    plan.claims.forEach(c => {
+      const b = el("div", "ans");
+      b.append(el("span", "chip " + c.status, names[c.status] || c.status), el("div", null, c.claim), el("div", "mute", c.evidence || ""));
+      cc.append(b);
+    });
+    cc.append(el("p", "mute", "Repo yang tidak ditemukan belum tentu berarti klaim salah (bisa private atau milik organisasi)."));
+    root.append(cc);
+  }
+
+  root.append(listCard("Saran latihan", rep.recommendations, ""));
+}
+function labelStar(k) { return { situation: "Situation", task: "Task", action: "Action", result: "Result" }[k]; }
+</script>
+</body>
+</html>
