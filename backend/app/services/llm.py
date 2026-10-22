@@ -7,8 +7,24 @@ from ..config import settings
 GEMINI_MODEL = settings.gemini_model
 GROQ_MODEL = settings.groq_model
 
-_gemini = genai.Client(api_key=settings.gemini_api_key) if settings.gemini_api_key else None
-_groq = Groq(api_key=settings.groq_api_key) if settings.groq_api_key else None
+GEMINI_TIMEOUT_MS = 12000  # batas ketat: lewat ini langsung fallback ke Groq
+
+_gemini = (
+    genai.Client(
+        api_key=settings.gemini_api_key,
+        http_options=types.HttpOptions(
+            timeout=GEMINI_TIMEOUT_MS,
+            retry_options=types.HttpRetryOptions(attempts=1),  # tanpa retry otomatis
+        ),
+    )
+    if settings.gemini_api_key
+    else None
+)
+_groq = (
+    Groq(api_key=settings.groq_api_key, timeout=25, max_retries=1)
+    if settings.groq_api_key
+    else None
+)
 
 
 def _call_gemini(system: str, messages: list[dict], temperature: float) -> str:

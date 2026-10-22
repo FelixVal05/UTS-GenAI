@@ -11,6 +11,28 @@ def _norm(w: str) -> str:
     return re.sub(r"[^\w]", "", (w or "").lower())
 
 
+def acoustic_silence_ratio(audio_bytes: bytes, top_db: float = 30.0) -> float | None:
+    """
+    Rasio hening fisik (0-1) memakai librosa.effects.split.
+    Return None jika audio tidak bisa didekode (soundfile maupun ffmpeg gagal),
+    sehingga pemanggil fallback ke timestamp kata Whisper (pause_pct).
+    """
+    try:
+        import librosa
+
+        from .audio import decode_audio
+
+        y = decode_audio(audio_bytes)  # webm/m4a -> WAV 16 kHz mono via ffmpeg bila perlu
+        if y is None or len(y) == 0:
+            return None
+        voiced = librosa.effects.split(y, top_db=top_db)
+        voiced_len = sum(int(e - s) for s, e in voiced)
+        return round(1 - voiced_len / len(y), 3)
+    except Exception as e:
+        print(f"[metrics] acoustic_silence_ratio dilewati: {e}")
+        return None
+
+
 def turn_metrics(words: list[dict]) -> dict | None:
     clean = [
         {"w": _norm(x["word"]), "start": x["start"], "end": x["end"]}
@@ -59,6 +81,33 @@ def summarize(user_turns) -> dict:
         "avg_start_delay": round(sum(m["start_delay"] for m in per_turn) / len(per_turn), 1),
         "fillers": sum(m["fillers"] for m in per_turn),
     }
+
+    # Rasio hening akustik (librosa) bila tersedia; jika tidak, fallback ke pause_pct (Whisper)
+    ratios = [
+        (t.metrics or {}).get("acoustic_silence_ratio") for t in user_turns
+    ]
+    ratios = [r for r in ratios if r is not None]
+    if ratios:
+        overall["acoustic_silence_ratio"] = round(sum(ratios) / len(ratios), 3)
+        overall["silence_source"] = "librosa"
+    else:
+        overall["acoustic_silence_ratio"] = round(overall["pause_pct"] / 100, 3)
+        overall["silence_source"] = "whisper_timestamps"
+
+    tones = [
+        (t.metrics or {}).get("voice_tone") for t in user_turns
+    ]
+    tones = [x for x in tones if x]
+    if tones:
+        labels = [x["label"] for x in tones if x.get("label")]
+        if labels:
+            top = max(set(labels), key=labels.count)
+            overall["voice_tone_indicator"] = {
+                "label": top,
+                "turn_labels": labels,
+                "model": tones[0].get("model"),
+                "experimental": True,
+            }
 
     # Aturan sederhana (heuristik kasar, bukan standar baku)
     flags = []

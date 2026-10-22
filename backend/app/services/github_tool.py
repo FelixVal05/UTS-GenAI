@@ -14,7 +14,7 @@ IGNORE = {"features", "about", "pricing", "orgs", "topics", "sponsors",
 
 
 def _headers(accept: str = "application/vnd.github+json") -> dict:
-    h = {"Accept": accept, "User-Agent": "InterviewPro"}
+    h = {"Accept": accept, "User-Agent": "Simulacra"}
     if settings.github_token:
         h["Authorization"] = f"Bearer {settings.github_token}"
     return h

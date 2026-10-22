@@ -1,5 +1,7 @@
 import base64
 import re
+import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
@@ -7,9 +9,11 @@ from sqlalchemy.orm import Session
 
 from ..db import get_db
 from ..models import InterviewSession, Turn
-from ..services import llm, stt, tts, planner, evaluator
+from ..services import llm, stt, tts, planner, evaluator, semantic
 from ..services import metrics as audio_metrics
 from ..services.interviewer import MAX_QUESTIONS, build_system_prompt
+
+_pool = ThreadPoolExecutor(max_workers=2)
 
 router = APIRouter(prefix="/sessions", tags=["interview"])
 
@@ -122,12 +126,22 @@ def user_turn(
         filename += ".webm"
 
     # 1) STT
+    t_stt = time.perf_counter()
     try:
         tr = stt.transcribe(data, filename, s.language, prompt=_stt_hint(s))
     except Exception as e:
         raise HTTPException(502, f"STT gagal: {e}")
+    stt_ms = round((time.perf_counter() - t_stt) * 1000)
     if not tr["text"]:
         raise HTTPException(422, "Suara tidak terdeteksi, coba ulangi")
+
+    # Analisis audio opsional (tidak boleh menghambat /turn): emosi HF jalan paralel
+    tone_future = _pool.submit(semantic.analyze_audio_emotion, data)
+    silence_ratio = audio_metrics.acoustic_silence_ratio(data)
+    try:
+        voice_tone = tone_future.result(timeout=8)
+    except Exception:
+        voice_tone = None
 
     db.add(
         Turn(
@@ -135,24 +149,35 @@ def user_turn(
             role="user",
             text=tr["text"],
             audio_seconds=tr["duration"],
-            metrics={"words": tr["words"]},  # dipakai metrik penyampaian
+            metrics={  # dipakai metrik penyampaian
+                "words": tr["words"],
+                "acoustic_silence_ratio": silence_ratio,
+                "voice_tone": voice_tone,
+            },
         )
     )
     db.commit()
     db.refresh(s)
 
     # 2) LLM + 3) TTS
+    t_llm = time.perf_counter()
     try:
         turn, provider = _ai_reply(db, s)
     except RuntimeError as e:
         raise HTTPException(502, str(e))
+    llm_ms = round((time.perf_counter() - t_llm) * 1000)
+
+    t_tts = time.perf_counter()
+    audio_b64 = _pack_audio(turn.text, s.language, audio)
+    tts_ms = round((time.perf_counter() - t_tts) * 1000)
 
     return {
         "user_text": tr["text"],
         "ai_text": turn.text,
-        "ai_audio_b64": _pack_audio(turn.text, s.language, audio),
+        "ai_audio_b64": audio_b64,
         "llm_provider": provider,
         "finished": s.status == "finished",
+        "latency_ms": {"stt_ms": stt_ms, "llm_ms": llm_ms, "tts_ms": tts_ms},
     }
 
 

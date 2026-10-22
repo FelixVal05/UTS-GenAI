@@ -117,6 +117,7 @@ def list_sessions(db: Session = Depends(get_db)):
             "scenario": r.scenario,
             "status": r.status,
             "created_at": r.created_at.isoformat(),
+            "overall_score": (r.report or {}).get("overall_score") if r.status == "finished" else None,
         }
         for r in rows
     ]

@@ -12,3 +12,8 @@ librosa
 soundfile
 pymysql
 cryptography
+huggingface_hub
+numpy
+fastembed
+beautifulsoup4
+json_repair
