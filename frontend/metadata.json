@@ -1,0 +1,6 @@
+{
+  "name": "Simulacra — Real-Time Voice Interview Simulator",
+  "description": "Simulasi wawancara kerja dan seleksi organisasi real-time berbasis suara dua arah (Push-to-Talk) dengan Job Scraper, CV Gap Analyzer, GitHub Fact-Checker, dan Rapor Evaluasi Hibrida.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -5,3 +5,7 @@ backend/.env
 *.mp3
 resp.json
 jina.txt
+
+frontend/node_modules/
+frontend/dist/
+node_modules/
