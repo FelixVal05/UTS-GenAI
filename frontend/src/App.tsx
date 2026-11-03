@@ -111,12 +111,14 @@ export default function App() {
     }));
   };
 
+  // 1. Eksekusi Analisis & Pembuatan Sesi Nyata di Backend (POST /sessions)
   // 1. Eksekusi Analisis & Pembuatan Sesi Nyata di Backend (POST /sessions -> POST /sessions/{id}/plan)
   const handleRunAnalysis = async () => {
     setIsLoadingSession(true);
     setSetupError(null);
 
     try {
+      // Panggil backend FastAPI
       // Panggil backend FastAPI untuk membuat sesi
       const session: BackendSession = await createSession({
         scenario: formData.scenario || selectedJob.title || 'Wawancara Teknis',
@@ -130,6 +132,8 @@ export default function App() {
 
       setSessionId(session.id);
 
+      // Mulai jalankan Planner di backend (via start session atau get plan)
+      // Panggil startInterview untuk memicu planner + kick-off AI
       // Jalankan Planner Agent & Fact-checker di backend agar blueprint terisi lengkap
       try {
         const plan = await makePlan(session.id);
@@ -150,6 +154,16 @@ export default function App() {
       setIsLoadingSession(false);
       setCurrentView('analysis');
       window.scrollTo({ top: 0, behavior: 'smooth' });
+
+      // Ambil detail sesi untuk membaca plan jika sudah ada
+      try {
+        const full = await getSession(session.id);
+        if (full.plan) {
+          setBackendPlan(full.plan);
+        }
+      } catch {
+        // Abaikan jika plan belum dibuat (akan dibuat saat klik Masuk Wawancara)
+      }
     } catch (err: any) {
       console.error('Create session error:', err);
       setSetupError(err.message || 'Gagal menghubungi backend FastAPI');
