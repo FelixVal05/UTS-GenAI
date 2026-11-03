@@ -25,6 +25,7 @@ import {
 import {
   extractCandidateName,
   parseJobRoleAndCompany,
+  resolveTargetJob,
 } from '../utils/interview-analyzer.ts';
 
 interface InterviewRoomProps {
@@ -71,7 +72,8 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({
     backendPlan?.candidate_summary
   );
 
-  const { title: resolvedRole, company: resolvedCompany } = parseJobRoleAndCompany(
+  const { title: resolvedRole, company: resolvedCompany } = resolveTargetJob(
+    backendPlan,
     job.title,
     job
   );

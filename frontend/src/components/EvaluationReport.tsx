@@ -18,6 +18,7 @@ import { BackendPlan, BackendReport } from '../services/api.ts';
 import {
   extractCandidateName,
   parseJobRoleAndCompany,
+  resolveTargetJob,
 } from '../utils/interview-analyzer.ts';
 
 interface EvaluationReportProps {
@@ -68,12 +69,15 @@ export const EvaluationReport: React.FC<EvaluationReportProps> = ({
     backendPlan?.candidate_summary
   );
 
-  const { title: resolvedRole, company: resolvedCompany } = parseJobRoleAndCompany(
+  const { title: resolvedRole, company: resolvedCompany } = resolveTargetJob(
+    backendPlan,
     report.jobRole,
     undefined
   );
   const companyName =
-    report.company && report.company !== 'GoTo Financial / Midtrans'
+    report.company &&
+    report.company !== 'GoTo Financial / Midtrans' &&
+    report.company !== 'Perusahaan Mitra'
       ? report.company
       : resolvedCompany;
 

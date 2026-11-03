@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { CandidateCV, GapAnalysisResult, InterviewerPersona, JobProfile } from '../types.ts';
 import { BackendPlan } from '../services/api.ts';
+import { resolveTargetJob } from '../utils/interview-analyzer.ts';
 
 interface PreInterviewAnalysisProps {
   cv: CandidateCV;
@@ -40,8 +41,11 @@ export const PreInterviewAnalysis: React.FC<PreInterviewAnalysisProps> = ({
       ? Math.round(backendPlan.semantic_match_score)
       : gapAnalysis.matchScore;
 
-  const targetTitle = backendPlan?.job?.title || job.title;
-  const targetCompany = backendPlan?.job?.company || job.company;
+  const { title: targetTitle, company: targetCompany } = resolveTargetJob(
+    backendPlan,
+    job.title,
+    job
+  );
   const jobError = backendPlan?.job?.error || null;
   const candidateSummary = backendPlan?.candidate_summary || null;
 

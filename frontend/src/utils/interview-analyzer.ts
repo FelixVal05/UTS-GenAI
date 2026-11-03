@@ -455,3 +455,61 @@ export function parseJobRoleAndCompany(
 
   return { title: text, company };
 }
+
+export function resolveTargetJob(
+  backendPlan?: { job?: { title?: string; company?: string } } | null,
+  scenario?: string,
+  fallbackJob?: JobProfile
+): { title: string; company: string } {
+  // 1. Prioritas Utama: Data job dari backend plan (hasil scraper lowongan / planner AI nyata)
+  const planJob = backendPlan?.job;
+  if (planJob?.title && planJob.title.trim()) {
+    const rawTitle = planJob.title.trim();
+    const rawCompany = planJob.company?.trim();
+
+    // Jika scraper menghasilkan title yang sudah memuat pemisah "Role · Company"
+    const parsed = parseJobRoleAndCompany(rawTitle, fallbackJob);
+    const resolvedTitle = parsed.title || rawTitle;
+    const resolvedCompany =
+      rawCompany ||
+      (parsed.company !== 'Perusahaan Mitra'
+        ? parsed.company
+        : fallbackJob?.company && fallbackJob.company !== 'GoTo Financial / Midtrans'
+        ? fallbackJob.company
+        : 'Perusahaan');
+
+    return {
+      title: resolvedTitle,
+      company: resolvedCompany,
+    };
+  }
+
+  // 2. Prioritas Kedua: Skenario yang dimasukkan user jika bukan default template
+  if (scenario && scenario.trim()) {
+    const parsed = parseJobRoleAndCompany(scenario.trim(), fallbackJob);
+    if (parsed.title && parsed.title !== 'Senior Full Stack Engineer') {
+      return parsed;
+    }
+  }
+
+  // 3. Jika fallbackJob ada dan bukan default GoTo
+  if (fallbackJob?.title && fallbackJob.title !== 'Senior Full Stack Engineer') {
+    return {
+      title: fallbackJob.title,
+      company:
+        fallbackJob.company && fallbackJob.company !== 'GoTo Financial / Midtrans'
+          ? fallbackJob.company
+          : 'Perusahaan',
+    };
+  }
+
+  // 4. Jika user memang sengaja memilih skenario Senior Full Stack
+  if (scenario && scenario.trim()) {
+    return parseJobRoleAndCompany(scenario.trim(), fallbackJob);
+  }
+
+  return {
+    title: fallbackJob?.title || 'Target Role',
+    company: fallbackJob?.company || 'Perusahaan Mitra',
+  };
+}

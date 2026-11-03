@@ -14,6 +14,7 @@ import {
   performGapAnalysis,
   extractCandidateName,
   parseJobRoleAndCompany,
+  resolveTargetJob,
 } from './utils/interview-analyzer.ts';
 import { Navbar } from './components/Navbar.tsx';
 import { LandingHero } from './components/LandingHero.tsx';
@@ -141,6 +142,18 @@ export default function App() {
         const plan = await makePlan(session.id);
         if (plan) {
           setBackendPlan(plan);
+          if (plan.job?.title) {
+            const resolved = resolveTargetJob(plan, formData.scenario, selectedJob);
+            setSelectedJob((prev) => ({
+              ...prev,
+              title: resolved.title,
+              company: resolved.company,
+            }));
+            setFormData((prev) => ({
+              ...prev,
+              scenario: `${resolved.title} · ${resolved.company}`,
+            }));
+          }
         }
       } catch (planErr: any) {
         console.warn('makePlan fallback: Planner akan dijalankan saat /start:', planErr);
@@ -149,6 +162,18 @@ export default function App() {
           const full = await getSession(session.id);
           if (full.plan) {
             setBackendPlan(full.plan);
+            if (full.plan.job?.title) {
+              const resolved = resolveTargetJob(full.plan, formData.scenario, selectedJob);
+              setSelectedJob((prev) => ({
+                ...prev,
+                title: resolved.title,
+                company: resolved.company,
+              }));
+              setFormData((prev) => ({
+                ...prev,
+                scenario: `${resolved.title} · ${resolved.company}`,
+              }));
+            }
           }
         } catch {}
       }
@@ -236,7 +261,8 @@ export default function App() {
     backendPlan?.candidate_summary
   );
 
-  const activeJobParsed = parseJobRoleAndCompany(
+  const activeJobParsed = resolveTargetJob(
+    backendPlan,
     formData.scenario,
     selectedJob
   );
