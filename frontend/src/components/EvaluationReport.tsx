@@ -156,6 +156,42 @@ export const EvaluationReport: React.FC<EvaluationReportProps> = ({
                 </div>
               </div>
             </div>
+
+            {/* 5 Rincian Skor Aspek Penilaian Evaluator (Skala 0-10) */}
+            {backendReport?.scores && (
+              <div className="mt-6 pt-4 border-t border-white/[0.06] space-y-2">
+                <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400 mb-2">
+                  RINCIAN 5 ASPEK PENILAIAN EVALUATOR (SKALA 0–10):
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5">
+                  {[
+                    { label: 'Relevansi', val: backendReport.scores.relevansi },
+                    { label: 'Struktur STAR', val: backendReport.scores.struktur_star },
+                    { label: 'Kejelasan', val: backendReport.scores.kejelasan },
+                    { label: 'Kedalaman', val: backendReport.scores.kedalaman },
+                    {
+                      label: 'Ketepatan Teknis',
+                      val: backendReport.scores.ketepatan_teknis,
+                    },
+                  ].map((item, idx) => (
+                    <div
+                      key={idx}
+                      className="p-2.5 rounded-lg bg-white/[0.02] border border-white/[0.06] flex flex-col justify-between"
+                    >
+                      <span className="text-[10px] font-mono text-slate-400 uppercase truncate">
+                        {item.label}
+                      </span>
+                      <div className="flex items-baseline justify-between mt-1">
+                        <span className="text-base font-mono font-bold text-white">
+                          {item.val != null ? item.val : '-'}
+                        </span>
+                        <span className="text-[10px] font-mono text-slate-500">/ 10</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -217,6 +253,24 @@ export const EvaluationReport: React.FC<EvaluationReportProps> = ({
                 Analisis kestabilan energi &amp; pitch kontur vokal dari rekaman audio.
               </p>
             </div>
+
+            {backendReport?.delivery?.flags && backendReport.delivery.flags.length > 0 && (
+              <div className="p-3 rounded-xl bg-amber-500/[0.04] border border-amber-500/20">
+                <span className="text-[10px] font-mono uppercase text-amber-400 font-bold block mb-1.5">
+                  Catatan Deteksi Delivery:
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  {backendReport.delivery.flags.map((flag, idx) => (
+                    <span
+                      key={idx}
+                      className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-amber-500/10 text-amber-300 border border-amber-500/30"
+                    >
+                      {flag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

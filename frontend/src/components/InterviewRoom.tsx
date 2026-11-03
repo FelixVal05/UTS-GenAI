@@ -35,7 +35,7 @@ interface InterviewRoomProps {
     ai_audio_b64: string | null;
     llm_provider: string;
   } | null;
-  onFinishInterview: (report: EvaluationReportData) => void;
+  onFinishInterview: (report: EvaluationReportData, rawBackendReport?: BackendReport) => void;
   onExit: () => void;
 }
 
@@ -72,6 +72,9 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({
   const [currentAiQuestion, setCurrentAiQuestion] = useState<string>(
     initialAiGreeting?.ai_text || 'Halo, selamat datang di sesi wawancara. Silakan perkenalkan diri Anda.'
   );
+  const [currentAiAudioB64, setCurrentAiAudioB64] = useState<string | null>(
+    initialAiGreeting?.ai_audio_b64 || null
+  );
 
   // Audio references
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -99,6 +102,7 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({
   useEffect(() => {
     if (initialAiGreeting?.ai_text) {
       setCurrentAiQuestion(initialAiGreeting.ai_text);
+      setCurrentAiAudioB64(initialAiGreeting.ai_audio_b64);
       setTurns([
         {
           role: 'ai',
@@ -337,6 +341,7 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({
       ]);
 
       setCurrentAiQuestion(resp.ai_text);
+      setCurrentAiAudioB64(resp.ai_audio_b64);
       setLiveTranscript('');
 
       if (resp.finished) {
@@ -421,7 +426,7 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({
         })),
       };
 
-      onFinishInterview(mappedReport);
+      onFinishInterview(mappedReport, backendReport);
     } catch (err: any) {
       alert('Gagal menghasilkan rapor dari backend: ' + (err.message || err));
       setIsFinishing(false);
@@ -614,7 +619,7 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({
 
           {/* Re-listen button */}
           <button
-            onClick={() => playAiVoice(currentAiQuestion, null)}
+            onClick={() => playAiVoice(currentAiQuestion, currentAiAudioB64)}
             className="w-full py-2.5 px-3 text-xs font-mono uppercase tracking-wider text-slate-300 hover:text-white bg-white/[0.03] border border-white/10 rounded-xl hover:bg-white/[0.06] transition-colors flex items-center justify-center gap-2"
           >
             <RotateCcw className="w-3.5 h-3.5 text-slate-400" />

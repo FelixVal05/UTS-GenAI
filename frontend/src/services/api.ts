@@ -176,6 +176,17 @@ export async function getSession(sessionId: string): Promise<BackendSession> {
   return res.json();
 }
 
+export async function makePlan(sessionId: string): Promise<BackendPlan> {
+  const res = await fetch(`${API_BASE}/sessions/${sessionId.trim()}/plan`, {
+    method: 'POST',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(typeof err.detail === 'string' ? err.detail : JSON.stringify(err.detail));
+  }
+  return res.json();
+}
+
 export async function listSessions(): Promise<BackendSession[]> {
   const res = await fetch(`${API_BASE}/sessions`);
   if (!res.ok) {
