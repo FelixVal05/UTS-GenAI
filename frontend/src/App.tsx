@@ -12,6 +12,8 @@ import {
   SAMPLE_CVS,
   SAMPLE_JOBS,
   performGapAnalysis,
+  extractCandidateName,
+  parseJobRoleAndCompany,
 } from './utils/interview-analyzer.ts';
 import { Navbar } from './components/Navbar.tsx';
 import { LandingHero } from './components/LandingHero.tsx';
@@ -173,6 +175,14 @@ export default function App() {
 
   // 2. Masuk ke Ruang Wawancara (POST /sessions/{id}/start)
   const handleEnterInterview = async () => {
+    // Unlock HTML5 Audio Context / playback dari direct user gesture sebelum await
+    try {
+      const unlockAudio = new Audio(
+        'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA'
+      );
+      unlockAudio.play().catch(() => {});
+    } catch {}
+
     if (!sessionId) {
       // Fallback mode jika masuk langsung tanpa backend id
       setIsSessionActive(true);
@@ -218,6 +228,19 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // Helper untuk mendapatkan nama kandidat dan detail pekerjaan aktif
+  const activeCandidateName = extractCandidateName(
+    formData.cvFile,
+    selectedCV.name,
+    formData.github,
+    backendPlan?.candidate_summary
+  );
+
+  const activeJobParsed = parseJobRoleAndCompany(
+    formData.scenario,
+    selectedJob
+  );
+
   // Default initial mock report fallback jika user langsung loncat ke report
   const getActiveReport = (): EvaluationReportData => {
     if (latestReport) return latestReport;
@@ -229,9 +252,9 @@ export default function App() {
         month: 'long',
         year: 'numeric',
       }),
-      candidateName: formData.cvFile ? formData.cvFile.name.replace('.pdf', '') : selectedCV.name,
-      jobRole: formData.scenario || selectedJob.title,
-      company: selectedJob.company,
+      candidateName: activeCandidateName,
+      jobRole: activeJobParsed.title,
+      company: activeJobParsed.company,
       persona: selectedPersona,
       overallScore: 86,
       technicalScore: 88,
@@ -359,8 +382,8 @@ export default function App() {
 
           {currentView === 'interview' && (
             <InterviewRoom
-              cv={selectedCV}
-              job={selectedJob}
+              cv={{ ...selectedCV, name: activeCandidateName }}
+              job={{ ...selectedJob, title: activeJobParsed.title, company: activeJobParsed.company }}
               persona={selectedPersona}
               gapAnalysis={gapAnalysis}
               backendPlan={backendPlan}

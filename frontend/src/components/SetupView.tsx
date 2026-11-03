@@ -22,6 +22,8 @@ import {
   SAMPLE_CVS,
   SAMPLE_JOBS,
   extractJobPlatform,
+  extractCandidateName,
+  parseJobRoleAndCompany,
 } from '../utils/interview-analyzer.ts';
 import {
   resolvePersonaVoice,
@@ -106,8 +108,10 @@ export const SetupView: React.FC<SetupViewProps> = ({
     const file = e.target.files?.[0];
     if (file) {
       onChangeFormData({ cvFile: file });
+      const parsedName = extractCandidateName(file);
       onSelectCV({
         ...selectedCV,
+        name: parsedName,
         fileName: file.name,
       });
     }
@@ -115,9 +119,10 @@ export const SetupView: React.FC<SetupViewProps> = ({
 
   const handleApplyPresetJob = (job: JobProfile) => {
     onSelectJob(job);
+    const parsed = parseJobRoleAndCompany(job.title, job);
     onChangeFormData({
       job_url: job.url,
-      scenario: job.title || formData.scenario,
+      scenario: `${parsed.title} · ${parsed.company}`,
     });
   };
 

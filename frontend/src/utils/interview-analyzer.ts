@@ -272,10 +272,10 @@ export const SAMPLE_JOBS: JobProfile[] = [
 export const SAMPLE_CVS: CandidateCV[] = [
   {
     id: 'cv-1',
-    name: 'Nathanael Valent',
-    fileName: 'CV_Nathanael_FullStack_Engineer_2026.pdf',
+    name: 'Kandidat',
+    fileName: 'CV_Kandidat_Software_Engineer.pdf',
     targetRole: 'Full Stack Engineer',
-    githubUsername: 'nathanaelvalent',
+    githubUsername: 'Anxten',
     skills: [
       'React & TypeScript',
       'Node.js / Express',
@@ -365,3 +365,93 @@ export const BENCHMARK_DATA = [
     voiceRoundtripMs: 370,
   },
 ];
+
+export function extractCandidateName(
+  cvFile?: File | null,
+  rawName?: string,
+  github?: string,
+  candidateSummary?: string
+): string {
+  // 1. Ekstrak dari nama file CV jika ada
+  if (cvFile?.name) {
+    const clean = cvFile.name
+      .replace(/\.pdf$/i, '')
+      .replace(/^(cv|resume|curriculum[_\s-]?vitae)[_\s-]+/i, '')
+      .replace(/[_\s-]+(cv|resume|curriculum[_\s-]?vitae)$/i, '')
+      .replace(/[_-]+/g, ' ')
+      .trim();
+    if (clean && !clean.toLowerCase().includes('valent')) {
+      return clean;
+    }
+  }
+
+  // 2. Ekstrak dari candidate summary AI jika tersedia
+  if (candidateSummary) {
+    const m = candidateSummary.match(
+      /^(?:Profil\s+|Kandidat\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)|([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\s+(?:adalah|memiliki|merupakan))/
+    );
+    if (m) {
+      const matchName = m[1] || m[2];
+      if (matchName && !matchName.toLowerCase().includes('valent') && matchName.length < 30) {
+        return matchName;
+      }
+    }
+  }
+
+  // 3. Ekstrak dari rawName jika valid
+  if (rawName && !rawName.toLowerCase().includes('valent') && rawName !== 'Nathanael Valent') {
+    return rawName;
+  }
+
+  // 4. Ekstrak dari GitHub handle
+  if (github && !github.toLowerCase().includes('valent')) {
+    return github.startsWith('@') ? github : `@${github}`;
+  }
+
+  return 'Kandidat';
+}
+
+export function parseJobRoleAndCompany(
+  scenario?: string,
+  fallbackJob?: JobProfile
+): { title: string; company: string } {
+  const text = scenario?.trim() || fallbackJob?.title || '';
+  if (!text) {
+    return { title: 'Target Role', company: 'Perusahaan Mitra' };
+  }
+
+  // Format: "Role · Company"
+  if (text.includes('·')) {
+    const parts = text.split('·');
+    return {
+      title: parts[0].trim() || 'Target Role',
+      company: parts.slice(1).join('·').trim() || 'Perusahaan Mitra',
+    };
+  }
+
+  // Format: "Role - Company"
+  if (text.includes(' - ')) {
+    const parts = text.split(' - ');
+    return {
+      title: parts[0].trim() || 'Target Role',
+      company: parts.slice(1).join(' - ').trim() || 'Perusahaan Mitra',
+    };
+  }
+
+  // Format: "Role (Company)"
+  const matchParen = text.match(/^(.*?)\s*\((.*?)\)$/);
+  if (matchParen) {
+    return {
+      title: matchParen[1].trim() || 'Target Role',
+      company: matchParen[2].trim() || 'Perusahaan Mitra',
+    };
+  }
+
+  // Jika tidak ada pemisah dan fallbackJob ada
+  const company =
+    fallbackJob?.company && fallbackJob.company !== 'GoTo Financial / Midtrans'
+      ? fallbackJob.company
+      : 'Perusahaan Mitra';
+
+  return { title: text, company };
+}

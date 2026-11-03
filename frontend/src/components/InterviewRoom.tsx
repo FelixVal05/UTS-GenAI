@@ -22,6 +22,10 @@ import { BackendPlan, BackendTurn, submitTurn, finishInterview, BackendReport } 
 import {
   cleanSpokenText,
 } from '../utils/voice-synthesizer.ts';
+import {
+  extractCandidateName,
+  parseJobRoleAndCompany,
+} from '../utils/interview-analyzer.ts';
 
 interface InterviewRoomProps {
   cv: CandidateCV;
@@ -58,6 +62,19 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({
   const [sessionTimer, setSessionTimer] = useState(0);
   const [audioMuted, setAudioMuted] = useState(false);
   const [isFinishing, setIsFinishing] = useState(false);
+
+  // Penentuan nama kandidat dan posisi pekerjaan secara dinamis (bebas dari hardcode)
+  const resolvedCandidateName = extractCandidateName(
+    null,
+    cv.name,
+    cv.githubUsername,
+    backendPlan?.candidate_summary
+  );
+
+  const { title: resolvedRole, company: resolvedCompany } = parseJobRoleAndCompany(
+    job.title,
+    job
+  );
 
   // Percakapan aktif
   const [turns, setTurns] = useState<
@@ -198,19 +215,33 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({
         audio.onended = () => {
           setAgentState('listening');
         };
-        audio.onerror = () => {
-          fallbackSpeechSynthesis(text);
+        audio.onerror = (e) => {
+          console.warn('[tts] Audio tag error:', e);
+          setAgentState('listening');
         };
-        audio.play().catch(() => {
-          fallbackSpeechSynthesis(text);
-        });
+        const playPromise = audio.play();
+        if (playPromise !== undefined) {
+          playPromise.catch((playErr) => {
+            console.warn('[tts] Autoplay blocked by browser policy:', playErr);
+            setAgentState('listening');
+            // Putar audio MP3 asli saat user berinteraksi klik pertama kali
+            const resumeOnInteraction = () => {
+              if (audioRef.current === audio) {
+                setAgentState('speaking');
+                audio.play().catch(() => setAgentState('listening'));
+              }
+              document.removeEventListener('click', resumeOnInteraction);
+            };
+            document.addEventListener('click', resumeOnInteraction, { once: true });
+          });
+        }
         return;
-      } catch {
-        fallbackSpeechSynthesis(text);
-        return;
+      } catch (e) {
+        console.warn('[tts] Failed to construct Audio from b64:', e);
       }
     }
 
+    // Hanya jika backend tidak menyediakan b64Audio sama sekali
     fallbackSpeechSynthesis(text);
   };
 
@@ -219,8 +250,31 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({
       const cleaned = cleanSpokenText(text);
       const utterance = new SpeechSynthesisUtterance(cleaned);
       utterance.lang = 'id-ID';
-      utterance.pitch = persona.voicePitch;
-      utterance.rate = persona.voiceRate;
+
+      const isFemalePersona = persona.id === 'sarah' || persona.gender === 'female';
+      const voices = window.speechSynthesis.getVoices();
+      const matched = voices.find((v) => {
+        const n = v.name.toLowerCase();
+        if (isFemalePersona) {
+          return (
+            n.includes('female') ||
+            n.includes('gadis') ||
+            n.includes('zira') ||
+            n.includes('susan') ||
+            n.includes('indonesia')
+          );
+        } else {
+          return (
+            n.includes('male') ||
+            n.includes('ardi') ||
+            n.includes('david') ||
+            n.includes('george')
+          );
+        }
+      });
+      if (matched) utterance.voice = matched;
+      utterance.pitch = isFemalePersona ? 1.05 : 0.85;
+      utterance.rate = persona.voiceRate || 1.0;
       utterance.onend = () => setAgentState('listening');
       utterance.onerror = () => setAgentState('listening');
       window.speechSynthesis.speak(utterance);
@@ -374,9 +428,9 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({
           month: 'long',
           year: 'numeric',
         }),
-        candidateName: cv.name || 'Kandidat',
-        jobRole: job.title || 'Target Role',
-        company: job.company || 'Perusahaan',
+        candidateName: resolvedCandidateName,
+        jobRole: resolvedRole,
+        company: resolvedCompany,
         persona,
         overallScore: backendReport.overall_score || 0,
         technicalScore: (backendReport.scores?.ketepatan_teknis ?? 8) * 10,
@@ -426,6 +480,7 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({
         })),
       };
 
+      onFinishInterview(mappedReport);
       onFinishInterview(mappedReport, backendReport);
     } catch (err: any) {
       alert('Gagal menghasilkan rapor dari backend: ' + (err.message || err));
@@ -453,7 +508,7 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({
           </button>
           <span className="text-white/20">|</span>
           <div className="text-xs font-mono text-slate-300">
-            {job.title} &middot; <span className="text-white font-bold">{job.company}</span>
+            {resolvedRole} &middot; <span className="text-white font-bold">{resolvedCompany}</span>
           </div>
         </div>
 
@@ -619,6 +674,7 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({
 
           {/* Re-listen button */}
           <button
+            onClick={() => playAiVoice(currentAiQuestion, null)}
             onClick={() => playAiVoice(currentAiQuestion, currentAiAudioB64)}
             className="w-full py-2.5 px-3 text-xs font-mono uppercase tracking-wider text-slate-300 hover:text-white bg-white/[0.03] border border-white/10 rounded-xl hover:bg-white/[0.06] transition-colors flex items-center justify-center gap-2"
           >

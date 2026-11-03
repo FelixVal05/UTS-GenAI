@@ -57,12 +57,13 @@ def _stt_hint(s: InterviewSession) -> str:
     return f"Wawancara {s.scenario}. Istilah: " + ", ".join(terms[:30])
 
 
-def _pack_audio(text: str, language: str, include: bool) -> str | None:
+def _pack_audio(text: str, language: str, persona: str, include: bool) -> str | None:
     if not include:
         return None
     try:
-        return base64.b64encode(tts.synthesize(text, language)).decode()
-    except Exception:
+        return base64.b64encode(tts.synthesize(text, language, persona)).decode()
+    except Exception as e:
+        print(f"[tts] synthesize error: {e}")
         return None  # TTS gagal -> frontend bisa fallback ke teks / speechSynthesis
 
 
@@ -96,7 +97,7 @@ def start_interview(
         raise HTTPException(502, str(e))
     return {
         "ai_text": turn.text,
-        "ai_audio_b64": _pack_audio(turn.text, s.language, audio),
+        "ai_audio_b64": _pack_audio(turn.text, s.language, s.persona, audio),
         "llm_provider": provider,
         "finished": s.status == "finished",
     }
@@ -168,7 +169,7 @@ def user_turn(
     llm_ms = round((time.perf_counter() - t_llm) * 1000)
 
     t_tts = time.perf_counter()
-    audio_b64 = _pack_audio(turn.text, s.language, audio)
+    audio_b64 = _pack_audio(turn.text, s.language, s.persona, audio)
     tts_ms = round((time.perf_counter() - t_tts) * 1000)
 
     return {

@@ -15,6 +15,10 @@ import {
 } from 'lucide-react';
 import { EvaluationReportData } from '../types.ts';
 import { BackendPlan, BackendReport } from '../services/api.ts';
+import {
+  extractCandidateName,
+  parseJobRoleAndCompany,
+} from '../utils/interview-analyzer.ts';
 
 interface EvaluationReportProps {
   report: EvaluationReportData;
@@ -56,6 +60,23 @@ export const EvaluationReport: React.FC<EvaluationReportProps> = ({
   const skillGaps = backendPlan?.skill_gaps || [];
   const claims = backendPlan?.claims || [];
 
+  // Resolusi nama kandidat dan perusahaan secara dinamis
+  const resolvedCandidateName = extractCandidateName(
+    null,
+    report.candidateName,
+    undefined,
+    backendPlan?.candidate_summary
+  );
+
+  const { title: resolvedRole, company: resolvedCompany } = parseJobRoleAndCompany(
+    report.jobRole,
+    undefined
+  );
+  const companyName =
+    report.company && report.company !== 'GoTo Financial / Midtrans'
+      ? report.company
+      : resolvedCompany;
+
   return (
     <div className="max-w-5xl mx-auto px-6 py-12 text-white">
       {/* Action Header */}
@@ -65,11 +86,11 @@ export const EvaluationReport: React.FC<EvaluationReportProps> = ({
             RAPOR EVALUASI HIBRIDA PASCA-WAWANCARA &middot; SIMULACRA
           </span>
           <h1 className="text-3xl sm:text-4xl font-black uppercase tracking-tight text-white mt-1">
-            HASIL EVALUASI: {report.candidateName}
+            HASIL EVALUASI: {resolvedCandidateName}
           </h1>
           <div className="text-xs font-mono text-slate-400 mt-1">
-            POSISI: <strong className="text-white">{report.jobRole}</strong> &middot;{' '}
-            <strong className="text-white">{report.company}</strong> &middot; TANGGAL: {report.date}
+            POSISI: <strong className="text-white">{resolvedRole}</strong> &middot;{' '}
+            <strong className="text-white">{companyName}</strong> &middot; TANGGAL: {report.date}
           </div>
         </div>
 
